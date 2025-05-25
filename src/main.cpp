@@ -6,8 +6,8 @@
 #include <addons/RTDBHelper.h>
 
 // =================== DEFINIÇÕES ====================
-#define WIFI_SSID       "Casa Luz"
-#define WIFI_PASS       "1804199820"
+#define WIFI_SSID       "COS21"
+#define WIFI_PASS       "Guireale2108"
 
 #define DATABASE_URL    "https://plantinha2-0-default-rtdb.firebaseio.com/"
 #define DATABASE_SECRET "0Ni86UbwQlNeIRYYiFScxhtdHImqGqEZ2LaQwAPy"
@@ -29,7 +29,21 @@ FirebaseConfig config;
 
 // ================== VARIÁVEIS ======================
 unsigned long lastFirebaseUpdate = 0;
+const uint8_t plantType = 1;  // <-- ajuste aqui
 int soilMoisture = 0;
+
+struct Plant {
+  const char* name;
+  uint16_t moistureThreshold;
+};
+
+Plant plants[] = {
+  {"Samambaia", 3600},   // tipo 1
+  {"Bananeira", 3000},   // tipo 2
+  {"Cacto",     4200},   // tipo 3
+  // {"Outra",    XXXX},  // tipo 4, etc.
+};
+const size_t numPlants = sizeof(plants)/sizeof(plants[0]);
 
 // ================== SETUP ==========================
 void setup() {
@@ -74,11 +88,16 @@ void loop() {
   int percent = map(soilMoisture, DRY_VALUE, WET_VALUE, 0, 100);
   percent = constrain(percent, 0, 100);
 
+  // Seleciona planta (evita índice fora do array)
+  size_t idx = (plantType >= 1 && plantType <= numPlants) ? plantType - 1 : 0;
+  const char* plantName = plants[idx].name;
+  uint16_t threshold = plants[idx].moistureThreshold;
+
   // Atualiza LCD
   lcd.setCursor(0, 0);
-  lcd.print("Umidade:");
+  lcd.printf("%-10s", plantName);
   lcd.setCursor(0, 1);
-  lcd.printf("%3d%% (%4d)  ", percent, soilMoisture);
+  lcd.printf("Umidade:%3d%% (%4d)", percent, soilMoisture);
 
   // Liga LED se estiver seco
   digitalWrite(EXT_LED_PIN, soilMoisture > MOISTURE_THRESHOLD ? HIGH : LOW);
@@ -90,6 +109,8 @@ void loop() {
     if (Firebase.ready()) {
       String path = "/plantinha/leituras";
       FirebaseJson json;
+      json.set("plantType", plantType);
+      json.set("plantName", plantName);
       json.set("umidade", percent);
       json.set("timestamp", millis()); // ou usar RTC para data real
           
