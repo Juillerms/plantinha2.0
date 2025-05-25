@@ -88,8 +88,12 @@ void loop() {
     lastFirebaseUpdate = millis();
 
     if (Firebase.ready()) {
-      String path = "/plantinha/umidade";
-      bool success = Firebase.setInt(fbdo, path.c_str(), percent);
+      String path = "/plantinha/leituras";
+      FirebaseJson json;
+      json.set("umidade", percent);
+      json.set("timestamp", millis()); // ou usar RTC para data real
+          
+      bool success = Firebase.pushJSON(fbdo, path.c_str(), json);
       Serial.printf("Firebase -> %s = %d [%s]\n", path.c_str(), percent,
                     success ? "OK" : fbdo.errorReason().c_str());
     }
