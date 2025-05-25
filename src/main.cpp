@@ -89,8 +89,8 @@ void loop() {
 
     if (Firebase.ready()) {
       String path = "/plantinha/umidade";
-      bool success = Firebase.setInt(fbdo, path.c_str(), soilMoisture);
-      Serial.printf("Firebase -> %s = %d [%s]\n", path.c_str(), soilMoisture,
+      bool success = Firebase.setInt(fbdo, path.c_str(), percent);
+      Serial.printf("Firebase -> %s = %d [%s]\n", path.c_str(), percent,
                     success ? "OK" : fbdo.errorReason().c_str());
     }
   }
