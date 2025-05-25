@@ -4,6 +4,10 @@
 #include <LiquidCrystal_I2C.h>
 #include <FirebaseESP32.h>
 #include <addons/RTDBHelper.h>
+
+#define BLYNK_TEMPLATE_ID "TMPL2sOwqifSp"
+#define BLYNK_TEMPLATE_NAME "Plantinha2"
+#define BLYNK_AUTH_TOKEN "777MG_d3rR746qeA2pog88dIYoTz3EEM"
 #include <BlynkSimpleEsp32.h>
 
 // =================== DEFINIÇÕES ====================
@@ -22,9 +26,7 @@ const uint16_t DRY_VALUE = 4095;
 const uint16_t WET_VALUE = 1800;
 #define MOISTURE_THRESHOLD 3900
 
-#define BLYNK_TEMPLATE_ID "TMPL2sOwqifSp"
-#define BLYNK_TEMPLATE_NAME "Plantinha2"
-#define BLYNK_AUTH_TOKEN "777MG_d3rR746qeA2pog88dIYoTz3EEM"
+
 
 // =================== OBJETOS GLOBAIS ====================
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -50,6 +52,8 @@ Plant plants[] = {
 };
 
 const size_t numPlants = sizeof(plants) / sizeof(plants[0]);
+
+void sendToBlynk();
 
 // =================== SETUP ====================
 void setup() {
