@@ -1,97 +1,99 @@
-/**
- * @file    main.cpp
- * @brief   Projeto Plantinha com LCD I2C para ESP32 e conexão Wi-Fi.
- * @version 1.1
- * @date    2025-05-25
- * @note    Adaptado de um projeto original para STM32.
- * Utiliza FreeRTOS para gerenciar tarefas de leitura do sensor,
- * atualização do LCD, controle de LED e interpretação de comandos via UART.
- */
-
-// Includes principais do framework Arduino, Wi-Fi e FreeRTOS
 #include <Arduino.h>
-#include <Wire.h>              // Para comunicação I2C
-#include <LiquidCrystal_I2C.h> // Biblioteca do LCD I2C
-#include <WiFi.h>              // Biblioteca Wi-Fi do ESP32
+#include <WiFi.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <FirebaseESP32.h>
+#include <addons/RTDBHelper.h>
 
+// =================== DEFINIÇÕES ====================
+#define WIFI_SSID       "Casa Luz"
+#define WIFI_PASS       "1804199820"
 
-// --- Definições de Hardware e Pinos (Ajuste conforme sua montagem) ---
+#define DATABASE_URL    "https://plantinha2-0-default-rtdb.firebaseio.com/"
+#define DATABASE_SECRET "0Ni86UbwQlNeIRYYiFScxhtdHImqGqEZ2LaQwAPy"
 
-// Sensor de Umidade do Solo (Pino ADC)
-#define SENSOR_PIN      34  // Pinos ADC1 no ESP32: 32, 33, 34, 35, 36, 39
+#define SENSOR_PIN      34
+#define EXT_LED_PIN     2
+#define I2C_SDA_PIN     21
+#define I2C_SCL_PIN     22
 
-// LED Externo
-#define EXT_LED_PIN     2   // Escolha qualquer pino GPIO disponível
+const uint16_t DRY_VALUE = 4095;
+const uint16_t WET_VALUE = 1800;
+#define MOISTURE_THRESHOLD 3900
 
-// Pinos I2C para o LCD
-#define I2C_SDA_PIN     21  // Pino padrão para SDA
-#define I2C_SCL_PIN     22  // Pino padrão para SCL
+// ================ OBJETOS GLOBAIS ==================
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
 
+// ================== VARIÁVEIS ======================
+unsigned long lastFirebaseUpdate = 0;
+int soilMoisture = 0;
 
-#define FIREBASE_URL "https://plantinha2-0-default-rtdb.firebaseio.com/"
-#define FIREBASE_AUTH "0Ni86UbwQlNeIRYYiFScxhtdHImqGqEZ2LaQwAPy"
-
-// --- Constantes do Projeto ---
-#define MOISTURE_THRESHOLD 3900   // Valor ADC para solo muito seco
-#define UART_BAUD_RATE    115200  // Taxa de comunicação serial
-
-// Calibração do Sensor (ajuste conforme suas medições)
-const uint16_t DRY_VALUE = 4095;  // Valor ADC com o sensor no ar (0% umidade)
-const uint16_t WET_VALUE = 1800;  // Valor ADC com o sensor na água (100% umidade)
-
-// --- Configurações de";    
-#define WIFI_SSID "Casa Luz"  // Substitua pelo nome da sua rede
-#define WIFI_PASS "1804199820"     // Substitua pela senha da sua rede
-
-// --- Variáveis Globais ---
-volatile uint16_t soil_moisture_value = 0;       // Valor lido do sensor (volatile para tasks)
-LiquidCrystal_I2C  lcd(0x27, 16, 2);             // Endereço I2C do LCD, 16 colunas, 2 linhas
-
-// --- Handles das Tasks do FreeRTOS ---
-TaskHandle_t sensorTaskHandle     = NULL;
-TaskHandle_t lcdTaskHandle        = NULL;
-TaskHandle_t controlTaskHandle    = NULL;
-TaskHandle_t uartCmdTaskHandle    = NULL;
-
-//==============================================================================
-// FUNÇÃO SETUP - Executada uma vez na inicialização
-//==============================================================================
+// ================== SETUP ==========================
 void setup() {
-  // Inicializa a comunicação Serial (UART)
-  Serial.println("\r\nIniciando o sistema...");
+  Serial.begin(115200);
 
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  Serial.print("Connecting to Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED)
-  {
-      Serial.print(".");
-      delay(300);
-  }
-  Serial.println();
-  Serial.print("Connected with IP: ");
-  Serial.println(WiFi.localIP());
-  // Inicializa os pinos GPIO
   pinMode(EXT_LED_PIN, OUTPUT);
-  digitalWrite(EXT_LED_PIN, LOW); // Começa com o LED apagado
+  digitalWrite(EXT_LED_PIN, LOW);
 
-  // Inicializa o I2C e o LCD
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   lcd.init();
   lcd.backlight();
   lcd.setCursor(0, 0);
-  lcd.print("Iniciando...");
+  lcd.print("Conectando Wi-Fi");
 
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(300);
+  }
+  Serial.println();
+  Serial.println("Wi-Fi conectado");
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Wi-Fi conectado");
 
-  Serial.println("Sistema iniciado e tarefas criadas.");
+  Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
 
-  // Conecta o ESP32 à rede Wi-Fi
+  Firebase.reconnectNetwork(true);
+  fbdo.setBSSLBufferSize(4096, 1024);
+  Firebase.begin(&config, &auth);
 
+  delay(1000);
+  lcd.clear();
 }
 
-//==============================================================================
-// FUNÇÃO LOOP - No FreeRTOS, pode ser deixada vazia
-//==============================================================================
+// ================= LOOP ============================
 void loop() {
-  vTaskDelay(pdMS_TO_TICKS(1000));
-}
+  // Leitura do sensor
+  soilMoisture = analogRead(SENSOR_PIN);
+  int percent = map(soilMoisture, DRY_VALUE, WET_VALUE, 0, 100);
+  percent = constrain(percent, 0, 100);
 
+  // Atualiza LCD
+  lcd.setCursor(0, 0);
+  lcd.print("Umidade:");
+  lcd.setCursor(0, 1);
+  lcd.printf("%3d%% (%4d)  ", percent, soilMoisture);
+
+  // Liga LED se estiver seco
+  digitalWrite(EXT_LED_PIN, soilMoisture > MOISTURE_THRESHOLD ? HIGH : LOW);
+
+  // Envia para o Firebase a cada 10 segundos
+  if (millis() - lastFirebaseUpdate > 10000) {
+    lastFirebaseUpdate = millis();
+
+    if (Firebase.ready()) {
+      String path = "/plantinha/umidade";
+      bool success = Firebase.setInt(fbdo, path.c_str(), soilMoisture);
+      Serial.printf("Firebase -> %s = %d [%s]\n", path.c_str(), soilMoisture,
+                    success ? "OK" : fbdo.errorReason().c_str());
+    }
+  }
+
+  delay(2000);
+}
