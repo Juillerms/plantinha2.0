@@ -11,8 +11,8 @@
 #include <BlynkSimpleEsp32.h>
 
 // =================== DEFINIÇÕES ====================
-#define WIFI_SSID       "COS21"
-#define WIFI_PASS       "Guireale2108"
+#define WIFI_SSID       "iPhone Francisco Filho"
+#define WIFI_PASS       "12345678"
 
 #define DATABASE_URL    "https://plantinha2-0-default-rtdb.firebaseio.com/"
 #define DATABASE_SECRET "0Ni86UbwQlNeIRYYiFScxhtdHImqGqEZ2LaQwAPy"
@@ -43,9 +43,9 @@ struct Plant {
 };
 
 Plant plants[] = {
-  {"Samambaia", 3600},   // tipo 1 (muita água)
-  {"Bananeira", 3000},   // tipo 2 (média água)
-  {"Cacto",     4200},   // tipo 3 (pouca água)
+  {"Samambaia", 3000},   // tipo 1 (muita água)
+  {"Alecrim", 3300},   // tipo 2 (média água)
+  {"Cacto", 3700},   // tipo 3 (pouca água)
 };
 
 const size_t numPlants = sizeof(plants) / sizeof(plants[0]);
