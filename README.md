@@ -1,6 +1,6 @@
-Story
 
-🌱 P lantinha Inteligente: Monitoramento de Umidade do Solo com ESP32, LCD, Firebase e Blynk
+
+🌱 Plantinha Inteligente: Monitoramento de Umidade do Solo com ESP32, LCD, Firebase e Blynk
 
 📌 Descrição do Projeto:
 
